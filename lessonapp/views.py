@@ -49,7 +49,7 @@ def lesson_query(request):
                 'Authorization': 'Bearer ' + api_key
             }
             reqBody = {
-                "model": "gpt-4",
+                "model": "gpt-3.5-turbo",
                 "messages": [
                     {"role": "user", "content": request.session.get('prompt')},
                     *chat_history
