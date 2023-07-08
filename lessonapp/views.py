@@ -33,48 +33,45 @@ def client_question(request):
 
 chat_history = []
 
-
 def lesson_query(request):
     chat_history = []
     if request.method == "GET":
         def stream():
-            while True:
-                api_key = config('OPENAI_API_KEY')
-                reqUrl = 'https://api.openai.com/v1/chat/completions'
-                reqHeaders = {
-                    'Accept': 'text/event-stream',
-                    'Authorization': 'Bearer ' + api_key
-                }
-                reqBody = {
-                    "model": "gpt-3.5-turbo",
-                    "messages": [
-                        {"role": "user", "content": request.session.get('prompt')},
-                        *chat_history
-                    ],
-                    "temperature": 0.2,
-                    "stream": True
-                }
-                res = requests.post(reqUrl, stream=True, headers=reqHeaders, json=reqBody)
-                client = sseclient.SSEClient(res)
-                res_content = ""
+            api_key = config('OPENAI_API_KEY')
+            reqUrl = 'https://api.openai.com/v1/chat/completions'
+            reqHeaders = {
+                'Accept': 'text/event-stream',
+                'Authorization': 'Bearer ' + api_key
+            }
+            reqBody = {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "user", "content": request.session.get('prompt')},
+                    *chat_history
+                ],
+                "temperature": 0.2,
+                "stream": True
+            }
+            res = requests.post(reqUrl, stream=True, headers=reqHeaders, json=reqBody)
+            client = sseclient.SSEClient(res)
+            res_content = ""
 
-                if not client.events().empty():
-                    for event in client.events():
-                        if event.data != '[DONE]':
-                            if 'content' in json.loads(event.data)['choices'][0]['delta']:
-                                response_text = json.loads(event.data)['choices'][0]['delta']['content']
-                                response_text = response_text.replace('\n', '<br/>')
-                                res_content += response_text
-                                print(response_text)
-                                yield f"data: {response_text}\n\n"
-                    chat_history.append({"role": "assistant", "content": res_content})
-                    yield 'event: terminate\ndata: {}\n\n'
+            for event in client.events():
+                if event.data != '[DONE]':
+                    if 'content' in json.loads(event.data)['choices'][0]['delta']:
+                        response_text = json.loads(event.data)['choices'][0]['delta']['content']
+                        response_text = response_text.replace('\n', '<br/>')
+                        res_content += response_text
+                        print(response_text)
+                        yield f"data: {response_text}\n\n"
                 else:
-                    yield 'data: heartbeat\n\n'
+                    break
+                yield 'data: heartbeat\n\n'
                 time.sleep(1)
+            chat_history.append({"role": "assistant", "content": res_content})
+            yield 'event: terminate\ndata: {}\n\n'
         return StreamingHttpResponse(stream(), content_type='text/event-stream')
     return JsonResponse({"message": "Recieve only GET method!!!"})
-
 
 def update_learning_style(request):
     if request.method == "POST":
