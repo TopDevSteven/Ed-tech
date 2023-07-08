@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'lessonapp'
+    'lessonapp',
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -69,7 +70,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'ai_tutor.wsgi.application'
+# WSGI_APPLICATION = 'ai_tutor.wsgi.application'
+ASGI_APPLICATION = 'ai_tutor.asgi.application'
 
 
 # Database
