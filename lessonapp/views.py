@@ -4,6 +4,7 @@ import requests
 import json
 import sseclient
 from decouple import config
+from channels.generic.http import AsyncHttpConsumer
 
 
 # Create your views here.
@@ -32,6 +33,7 @@ def client_question(request):
 
 chat_history = []
 
+
 def lesson_query(request):
     if request.method == "GET":
         def stream():
@@ -58,7 +60,6 @@ def lesson_query(request):
                 "stream": True
             }
             res = requests.post(reqUrl, stream=True, headers=reqHeaders, json=reqBody)
-            print(res.json())
             client = sseclient.SSEClient(res)
             res_content = ""
             for event in client.events():
