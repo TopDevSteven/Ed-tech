@@ -58,6 +58,7 @@ def lesson_query(request):
                 "stream": True
             }
             res = requests.post(reqUrl, stream=True, headers=reqHeaders, json=reqBody)
+            print(res.json())
             client = sseclient.SSEClient(res)
             res_content = ""
             for event in client.events():

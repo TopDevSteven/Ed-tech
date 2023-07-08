@@ -10,3 +10,4 @@ python-decouple==3.8
 sseclient-py==1.7.2
 uvicorn
 channels==3.0.4
+httpx
