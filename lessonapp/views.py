@@ -5,7 +5,7 @@ import json
 import sseclient
 from decouple import config
 from channels.generic.http import AsyncHttpConsumer
-
+import time
 
 # Create your views here.
 
@@ -35,45 +35,46 @@ chat_history = []
 
 
 def lesson_query(request):
+    chat_history = []
     if request.method == "GET":
         def stream():
-            chat_history.append({"role": "user", "content": client_data["method"]+ " " +client_data["message"]})
-            total_tokens = sum([len(m["content"].split()) for m in chat_history])
-            while total_tokens > 4050: # slightly less than model's max token limit for safety
-                removed_message = chat_history.pop(2)
-                total_tokens -= len(removed_message["content"])
-                removed_message = chat_history.pop(3)
-                total_tokens -= len(removed_message["content"])
-            api_key = config('OPENAI_API_KEY')
-            reqUrl = 'https://api.openai.com/v1/chat/completions'
-            reqHeaders = {
-                'Accept': 'text/event-stream',
-                'Authorization': 'Bearer ' + api_key
-            }
-            reqBody = {
-                "model": "gpt-3.5-turbo",
-                "messages": [
-                    {"role": "user", "content": request.session.get('prompt')},
-                    *chat_history
-                ],
-                "temperature": 0.2,
-                "stream": True
-            }
-            res = requests.post(reqUrl, stream=True, headers=reqHeaders, json=reqBody)
-            client = sseclient.SSEClient(res)
-            res_content = ""
-            for event in client.events():
-                if event.data != '[DONE]':
-                    if 'content' in json.loads(event.data)['choices'][0]['delta']:
-                        response_text = json.loads(event.data)['choices'][0]['delta']['content']
-                        response_text = response_text.replace('\n', '<br/>')
-                        res_content += response_text
-                        print(response_text)
-                        yield f"data: {response_text}\n\n"
-            chat_history.append({"role": "assistant", "content": res_content})
-            yield 'event: terminate\ndata: {}\n\n'
+            while True:
+                api_key = config('OPENAI_API_KEY')
+                reqUrl = 'https://api.openai.com/v1/chat/completions'
+                reqHeaders = {
+                    'Accept': 'text/event-stream',
+                    'Authorization': 'Bearer ' + api_key
+                }
+                reqBody = {
+                    "model": "gpt-3.5-turbo",
+                    "messages": [
+                        {"role": "user", "content": request.session.get('prompt')},
+                        *chat_history
+                    ],
+                    "temperature": 0.2,
+                    "stream": True
+                }
+                res = requests.post(reqUrl, stream=True, headers=reqHeaders, json=reqBody)
+                client = sseclient.SSEClient(res)
+                res_content = ""
+
+                if not client.events().empty():
+                    for event in client.events():
+                        if event.data != '[DONE]':
+                            if 'content' in json.loads(event.data)['choices'][0]['delta']:
+                                response_text = json.loads(event.data)['choices'][0]['delta']['content']
+                                response_text = response_text.replace('\n', '<br/>')
+                                res_content += response_text
+                                print(response_text)
+                                yield f"data: {response_text}\n\n"
+                    chat_history.append({"role": "assistant", "content": res_content})
+                    yield 'event: terminate\ndata: {}\n\n'
+                else:
+                    yield 'data: heartbeat\n\n'
+                time.sleep(1)
         return StreamingHttpResponse(stream(), content_type='text/event-stream')
     return JsonResponse({"message": "Recieve only GET method!!!"})
+
 
 def update_learning_style(request):
     if request.method == "POST":
